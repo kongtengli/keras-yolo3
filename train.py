@@ -8,29 +8,28 @@ from keras.layers import Input, Lambda
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
-
 from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss
 from yolo3.utils import get_random_data
 
 
 def _main():
-    annotation_path = 'train.txt'
-    log_dir = 'logs/000/'
-    classes_path = 'model_data/voc_classes.txt'
-    anchors_path = 'model_data/yolo_anchors.txt'
-    class_names = get_classes(classes_path)
-    num_classes = len(class_names)
-    anchors = get_anchors(anchors_path)
+    annotation_path = '2007_train.txt' #指定训练标签文件
+    log_dir = 'logs/000/' #指定记录文件
+    classes_path = 'model_data/voc_classes.txt' #指定训练类
+    anchors_path = 'model_data/yolo_anchors2.txt' #指定先验框
+    class_names = get_classes(classes_path) # 从训练类文件读取所有类名
+    num_classes = len(class_names) #取得类型数量
+    anchors = get_anchors(anchors_path) #取得先验框
 
-    input_shape = (416,416) # multiple of 32, hw
+    input_shape = (416,416) # multiple of 32, hw 指定输入图像的大小
 
-    is_tiny_version = len(anchors)==6 # default setting
+    is_tiny_version = len(anchors)==6 # default setting 判断是否是小模型
     if is_tiny_version:
         model = create_tiny_model(input_shape, anchors, num_classes,
             freeze_body=2, weights_path='model_data/tiny_yolo_weights.h5')
     else:
         model = create_model(input_shape, anchors, num_classes,
-            freeze_body=2, weights_path='model_data/yolo_weights.h5') # make sure you know what you freeze
+            freeze_body=2, weights_path='model_data/yolo.h5') # make sure you know what you freeze
 
     logging = TensorBoard(log_dir=log_dir)
     checkpoint = ModelCheckpoint(log_dir + 'ep{epoch:03d}-loss{loss:.3f}-val_loss{val_loss:.3f}.h5',
@@ -73,7 +72,7 @@ def _main():
         model.compile(optimizer=Adam(lr=1e-4), loss={'yolo_loss': lambda y_true, y_pred: y_pred}) # recompile to apply the change
         print('Unfreeze all of the layers.')
 
-        batch_size = 32 # note that more GPU memory is required after unfreezing the body
+        batch_size = 32 # note that more GPU memory is required after unfreezing the body 这个需要改小一点
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
         model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
             steps_per_epoch=max(1, num_train//batch_size),
